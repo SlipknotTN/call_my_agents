@@ -1,0 +1,9 @@
+black==25.1.0
+decord==0.6.0
+huggingface-hub==0.29.3
+langchain==0.3.21
+langchain-community==0.3.20
+langgraph==0.3.18
+matplotlib==3.10.1
+opencv-python==4.11.0.86
+sam2==1.1.0
