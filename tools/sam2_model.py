@@ -22,7 +22,7 @@ from sam2.sam2_video_predictor import SAM2VideoPredictor
 np.random.seed(3)
 
 
-def get_and_show_mask(mask, random_color=False, borders=True, ax=None) -> np.ndarray:
+def get_and_show_mask(mask: np.ndarray, random_color: bool =False, borders: bool =True, ax: plt.Axes | None = None) -> np.ndarray:
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
@@ -44,7 +44,7 @@ def get_and_show_mask(mask, random_color=False, borders=True, ax=None) -> np.nda
     return (mask_color_with_alpha * 255).astype(np.uint8)
 
 
-def get_and_show_points(image_width: int, image_height: int, coords: np.ndarray, labels: np.ndarray, ax: plt.axes, marker_size: int = 375) -> np.ndarray:
+def get_and_show_points(image_width: int, image_height: int, coords: np.ndarray, labels: np.ndarray, ax: plt.Axes | None = None, marker_size: int = 375) -> np.ndarray:
     pos_points = coords[labels == 1]
     neg_points = coords[labels == 0]
     points_overlay = np.zeros(shape=(image_height, image_width, 3), dtype=np.uint8)
@@ -73,7 +73,7 @@ def get_and_show_points(image_width: int, image_height: int, coords: np.ndarray,
         cv2.circle(points_overlay, center=neg_point, radius=10, color=(0, 0, 255), thickness=2, lineType=-1)
     return points_overlay
 
-def get_and_show_box(image_width: int, image_height: int, box, ax) -> np.ndarray:
+def get_and_show_box(image_width: int, image_height: int, box, ax: plt.Axes | None = None) -> np.ndarray:
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
     box_overlay = np.zeros(shape=(image_height, image_width, 3), dtype=np.uint8)
