@@ -44,10 +44,9 @@ def get_and_show_mask(mask: np.ndarray, random_color: bool =False, borders: bool
     return (mask_color_with_alpha * 255).astype(np.uint8)
 
 
-def get_and_show_points(image_width: int, image_height: int, coords: np.ndarray, labels: np.ndarray, ax: plt.Axes | None = None, marker_size: int = 375) -> np.ndarray:
+def draw_and_show_points(image_canvas: np.ndarray, coords: np.ndarray, labels: np.ndarray, ax: plt.Axes | None = None, marker_size: int = 375):
     pos_points = coords[labels == 1]
     neg_points = coords[labels == 0]
-    points_overlay = np.zeros(shape=(image_height, image_width, 3), dtype=np.uint8)
     if ax:
         ax.scatter(
             pos_points[:, 0],
@@ -68,21 +67,18 @@ def get_and_show_points(image_width: int, image_height: int, coords: np.ndarray,
             linewidth=1.25,
         )
     for pos_point in pos_points:
-        cv2.circle(points_overlay, center=pos_point, radius=10, color=(0, 255, 0), thickness=2, lineType=-1)
+        cv2.circle(image_canvas, center=pos_point, radius=5, color=(0, 255, 0), thickness=-1, lineType=-1)
     for neg_point in neg_points:
-        cv2.circle(points_overlay, center=neg_point, radius=10, color=(0, 0, 255), thickness=2, lineType=-1)
-    return points_overlay
+        cv2.circle(image_canvas, center=neg_point, radius=5, color=(255, 0, 0), thickness=-1, lineType=-1)
 
-def get_and_show_box(image_width: int, image_height: int, box, ax: plt.Axes | None = None) -> np.ndarray:
+def draw_and_show_box(image_canvas: np.ndarray, box: np.ndarray, ax: plt.Axes | None = None):
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
-    box_overlay = np.zeros(shape=(image_height, image_width, 3), dtype=np.uint8)
     if ax:
         ax.add_patch(
             plt.Rectangle((x0, y0), w, h, edgecolor="green", facecolor=(0, 0, 0, 0), lw=2)
         )
-    cv2.rectangle(box_overlay, pt1=(x0, y0), pt2=(x0 + w, y0 + h), color=(0, 255, 0), thickness=2)
-    return box_overlay
+    cv2.rectangle(image_canvas, pt1=(x0, y0), pt2=(x0 + w, y0 + h), color=(0, 255, 0), thickness=2)
 
 def get_and_show_masks(
     image_canvas: np.ndarray,
@@ -103,23 +99,23 @@ def get_and_show_masks(
             mask_overlay_with_alpha = get_and_show_mask(mask, ax=plt.gca(), borders=borders)
         else:
             mask_overlay_with_alpha = get_and_show_mask(mask, borders=borders)
-        image_with_overlay = cv2.addWeighted(image_with_overlay, 1.0, mask_overlay_with_alpha[:,:,:3], 0.6, 0)
+        # Extract RGB and alpha channels
+        mask_rgb = mask_overlay_with_alpha[:,:,:3]
+        mask_alpha = mask_overlay_with_alpha[:,:,3:4] / 255.0  # Normalize alpha to 0-1
+        image_with_overlay = image_with_overlay * (1 - mask_alpha) + mask_rgb * mask_alpha
+        image_with_overlay = image_with_overlay.astype(np.uint8)
         if point_coords is not None:
             assert input_labels is not None
             if plt_show:
-                points_overlay = get_and_show_points(image_width=mask.shape[1], image_height=mask.shape[0],
-                                                     coords=point_coords, labels=input_labels, ax=plt.gca())
+                draw_and_show_points(image_canvas=image_with_overlay, coords=point_coords, labels=input_labels, ax=plt.gca())
             else:
-                points_overlay = get_and_show_points(image_width=mask.shape[1], image_height=mask.shape[0],
-                                                     coords=point_coords, labels=input_labels)
-            image_with_overlay = cv2.addWeighted(image_with_overlay, 1.0, points_overlay, 1.0, 0)
+                draw_and_show_points(image_canvas=image_with_overlay, coords=point_coords, labels=input_labels)
         if box_coords is not None:
             # boxes
             if plt_show:
-                box_overlay = get_and_show_box(image_width=mask.shape[1], image_height=mask.shape[0], box=box_coords, ax=plt.gca())
+                draw_and_show_box(image_canvas=image_with_overlay, box=box_coords, ax=plt.gca())
             else:
-                box_overlay = get_and_show_box(image_width=mask.shape[1], image_height=mask.shape[0], box=box_coords)
-            image_with_overlay = cv2.addWeighted(image_with_overlay, 1.0, box_overlay, 1.0, 0)
+                draw_and_show_box(image_canvas=image_with_overlay, box=box_coords)
         if plt_show:
             plt.title(f"Mask {i+1}, Score: {score:.3f}", fontsize=18)
             plt.axis("off")
