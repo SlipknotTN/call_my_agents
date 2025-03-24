@@ -1,2 +1,6 @@
+# IDE
 .idea
+.vscode
+
+# Data
 data
