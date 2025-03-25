@@ -363,7 +363,6 @@ def predict_video_from_model(
         state = video_predictor.init_state(video_path, offload_video_to_cpu=True)
 
         # add new prompts and instantly get the output on the same frame
-        # we don't change the prompt after the first frame
         frame_idx, object_ids, masks_logits = video_predictor.add_new_points_or_box(
             state,
             frame_idx=start_frame_idx,
