@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from cv2 import VideoWriter
 
 from decord import VideoReader
 from decord import cpu, gpu
@@ -22,29 +23,40 @@ from sam2.sam2_video_predictor import SAM2VideoPredictor
 np.random.seed(3)
 
 
-def get_and_show_mask(mask: np.ndarray, random_color: bool =False, borders: bool =True, ax: plt.Axes | None = None) -> np.ndarray:
+def get_and_show_mask_image(
+    mask: np.ndarray,
+    random_color: bool = False,
+    borders: bool = True,
+    ax: plt.Axes | None = None,
+) -> np.ndarray:
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
         color = np.array([30 / 255, 144 / 255, 255 / 255, 0.6])
     h, w = mask.shape[-2:]
     mask = mask.astype(np.uint8)
-    mask_color_with_alpha = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
+    mask_overlay_with_alpha = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
     if borders:
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         # Try to smooth contours
         contours = [
             cv2.approxPolyDP(contour, epsilon=0.01, closed=True) for contour in contours
         ]
-        mask_color_with_alpha = cv2.drawContours(
-            mask_color_with_alpha, contours, -1, (1, 1, 1, 0.5), thickness=2
+        mask_overlay_with_alpha = cv2.drawContours(
+            mask_overlay_with_alpha, contours, -1, (1, 1, 1, 0.5), thickness=2
         )
     if ax:
-        ax.imshow(mask_color_with_alpha)
-    return (mask_color_with_alpha * 255).astype(np.uint8)
+        ax.imshow(mask_overlay_with_alpha)
+    return (mask_overlay_with_alpha * 255).astype(np.uint8)
 
 
-def draw_and_show_points(image_canvas: np.ndarray, coords: np.ndarray, labels: np.ndarray, ax: plt.Axes | None = None, marker_size: int = 375):
+def draw_and_show_points_image(
+    image_canvas: np.ndarray,
+    coords: np.ndarray,
+    labels: np.ndarray,
+    ax: plt.Axes | None = None,
+    marker_size: int = 375,
+):
     pos_points = coords[labels == 1]
     neg_points = coords[labels == 0]
     if ax:
@@ -67,20 +79,42 @@ def draw_and_show_points(image_canvas: np.ndarray, coords: np.ndarray, labels: n
             linewidth=1.25,
         )
     for pos_point in pos_points:
-        cv2.circle(image_canvas, center=pos_point, radius=5, color=(0, 255, 0), thickness=-1, lineType=-1)
+        cv2.circle(
+            image_canvas,
+            center=pos_point,
+            radius=5,
+            color=(0, 255, 0),
+            thickness=-1,
+            lineType=-1,
+        )
     for neg_point in neg_points:
-        cv2.circle(image_canvas, center=neg_point, radius=5, color=(255, 0, 0), thickness=-1, lineType=-1)
+        cv2.circle(
+            image_canvas,
+            center=neg_point,
+            radius=5,
+            color=(255, 0, 0),
+            thickness=-1,
+            lineType=-1,
+        )
 
-def draw_and_show_box(image_canvas: np.ndarray, box: np.ndarray, ax: plt.Axes | None = None):
+
+def draw_and_show_box_image(
+    image_canvas: np.ndarray, box: np.ndarray, ax: plt.Axes | None = None
+):
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
     if ax:
         ax.add_patch(
-            plt.Rectangle((x0, y0), w, h, edgecolor="green", facecolor=(0, 0, 0, 0), lw=2)
+            plt.Rectangle(
+                (x0, y0), w, h, edgecolor="green", facecolor=(0, 0, 0, 0), lw=2
+            )
         )
-    cv2.rectangle(image_canvas, pt1=(x0, y0), pt2=(x0 + w, y0 + h), color=(0, 255, 0), thickness=2)
+    cv2.rectangle(
+        image_canvas, pt1=(x0, y0), pt2=(x0 + w, y0 + h), color=(0, 255, 0), thickness=2
+    )
 
-def get_and_show_masks(
+
+def get_and_show_masks_image(
     image_canvas: np.ndarray,
     masks: list | np.ndarray,
     scores: list | np.ndarray,
@@ -96,26 +130,42 @@ def get_and_show_masks(
         if plt_show:
             plt.figure(figsize=(10, 10))
             plt.imshow(image_canvas)
-            mask_overlay_with_alpha = get_and_show_mask(mask, ax=plt.gca(), borders=borders)
+            mask_overlay_with_alpha = get_and_show_mask_image(
+                mask, ax=plt.gca(), borders=borders
+            )
         else:
-            mask_overlay_with_alpha = get_and_show_mask(mask, borders=borders)
+            mask_overlay_with_alpha = get_and_show_mask_image(mask, borders=borders)
         # Extract RGB and alpha channels
-        mask_rgb = mask_overlay_with_alpha[:,:,:3]
-        mask_alpha = mask_overlay_with_alpha[:,:,3:4] / 255.0  # Normalize alpha to 0-1
-        image_with_overlay = image_with_overlay * (1 - mask_alpha) + mask_rgb * mask_alpha
+        mask_rgb = mask_overlay_with_alpha[:, :, :3]
+        mask_alpha = mask_overlay_with_alpha[:, :, 3:4] / 255.0
+        # Normalize alpha to 0-1
+        image_with_overlay = (
+            image_with_overlay * (1 - mask_alpha) + mask_rgb * mask_alpha
+        )
         image_with_overlay = image_with_overlay.astype(np.uint8)
         if point_coords is not None:
             assert input_labels is not None
             if plt_show:
-                draw_and_show_points(image_canvas=image_with_overlay, coords=point_coords, labels=input_labels, ax=plt.gca())
+                draw_and_show_points_image(
+                    image_canvas=image_with_overlay,
+                    coords=point_coords,
+                    labels=input_labels,
+                    ax=plt.gca(),
+                )
             else:
-                draw_and_show_points(image_canvas=image_with_overlay, coords=point_coords, labels=input_labels)
+                draw_and_show_points_image(
+                    image_canvas=image_with_overlay,
+                    coords=point_coords,
+                    labels=input_labels,
+                )
         if box_coords is not None:
             # boxes
             if plt_show:
-                draw_and_show_box(image_canvas=image_with_overlay, box=box_coords, ax=plt.gca())
+                draw_and_show_box_image(
+                    image_canvas=image_with_overlay, box=box_coords, ax=plt.gca()
+                )
             else:
-                draw_and_show_box(image_canvas=image_with_overlay, box=box_coords)
+                draw_and_show_box_image(image_canvas=image_with_overlay, box=box_coords)
         if plt_show:
             plt.title(f"Mask {i+1}, Score: {score:.3f}", fontsize=18)
             plt.axis("off")
@@ -124,7 +174,24 @@ def get_and_show_masks(
     return images_with_masks
 
 
-def show_mask_video(mask, ax, obj_id=None, random_color=False):
+def draw_and_show_mask_video_frame(
+    mask: np.ndarray,
+    ax: plt.Axes | None = None,
+    obj_id: int | None = None,
+    random_color: bool = False,
+) -> np.ndarray:
+    """
+    Draw and show a mask on a video frame
+
+    Args:
+        mask: np.ndarray of shape (H, W)
+        ax: optional plt.Axes to draw on
+        obj_id: optional int to uidentify an object and reuse the same color over all frames
+        random_color: bool to use a random color
+
+    Returns:
+        mask_overlay_with_alpha: np.ndarray of shape (H, W, 3)
+    """
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
@@ -132,9 +199,194 @@ def show_mask_video(mask, ax, obj_id=None, random_color=False):
         cmap_idx = 0 if obj_id is None else obj_id
         color = np.array([*cmap(cmap_idx)[:3], 0.6])
     h, w = mask.shape[-2:]
-    mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
-    ax.imshow(mask_image)
-    return mask_image
+    mask_overlay_with_alpha = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
+    if ax:
+        ax.imshow(mask_overlay_with_alpha)
+    return (mask_overlay_with_alpha * 255).astype(np.uint8)
+
+
+def save_and_show_masks_video(
+    video_path: str,
+    video_frames_obj_masks: dict,
+    output_dir: str,
+    max_frames: int | None,
+    plt_show: bool = False,
+) -> str:
+
+    # Open the video again and draw masks on the frames one by one
+    with open(video_path, "rb") as f:
+        vr = VideoReader(f, ctx=cpu(0))
+    input_video_fps = vr.get_avg_fps()
+    print(f"Video frames {len(vr)}, max frames {max_frames}")
+    os.makedirs(output_dir, exist_ok=True)
+    output_video_path = os.path.join(output_dir, f"{Path(video_path).stem}_masks.mp4")
+
+    # Get frame size from first frame
+    first_frame = vr[0]
+    frame_size = (first_frame.shape[1], first_frame.shape[0])
+
+    # Initialize VideoWriter with proper fourcc code
+    fourcc = cv2.VideoWriter_fourcc(*"MP4V")
+    vw = cv2.VideoWriter(output_video_path, fourcc, input_video_fps, frame_size)
+
+    try:
+        for i in range(len(vr)):
+            if max_frames is not None and i >= max_frames:
+                break
+            # the video reader will handle seeking and skipping in the most efficient manner
+            frame = vr[i].cpu().numpy()
+            if plt_show:
+                plt.title(f"frame {i}")
+                plt.imshow(frame)
+
+            frame_with_overlay = frame.copy()
+            if i in video_frames_obj_masks.keys():
+                for out_obj_id, out_mask in video_frames_obj_masks[i].items():
+                    if plt_show:
+                        mask_overlay_with_alpha = draw_and_show_mask_video_frame(
+                            out_mask, plt.gca(), obj_id=out_obj_id
+                        )
+                        if i % 10 == 0:
+                            # show every 10 frames
+                            plt.show()
+                    else:
+                        mask_overlay_with_alpha = draw_and_show_mask_video_frame(
+                            out_mask, obj_id=out_obj_id
+                        )
+                    # Extract RGB and alpha channels
+                    mask_rgb = mask_overlay_with_alpha[:, :, :3]
+                    mask_alpha = mask_overlay_with_alpha[:, :, 3:4] / 255.0
+                    # Normalize alpha to 0-1
+                    frame_with_overlay = (
+                        frame_with_overlay * (1 - mask_alpha) + mask_rgb * mask_alpha
+                    )
+                    frame_with_overlay = frame_with_overlay.astype(np.uint8)
+                vw.write(cv2.cvtColor(frame_with_overlay, cv2.COLOR_RGB2BGR))
+            else:
+                vw.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+    finally:
+        vw.release()
+    return output_video_path
+
+
+def predict_image(
+    image_path: str,
+    hf_model_url: str,
+    prompt_points: np.ndarray | None = None,
+    prompt_labels: np.ndarray | None = None,
+    prompt_box: np.ndarray | None = None,
+    multimask_output: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    im_predictor = SAM2ImagePredictor.from_pretrained(hf_model_url)
+    image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    return predict_image_from_model(
+        im_predictor=im_predictor,
+        image=image,
+        prompt_points=prompt_points,
+        prompt_labels=prompt_labels,
+        prompt_box=prompt_box,
+        multimask_output=multimask_output,
+    )
+
+
+def predict_image_from_model(
+    im_predictor: SAM2ImagePredictor,
+    image: np.ndarray,
+    prompt_points: np.ndarray | None = None,
+    prompt_labels: np.ndarray | None = None,
+    prompt_box: np.ndarray | None = None,
+    multimask_output: bool = False,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Predict masks for an image using a SAM2 image model
+
+    Args:
+        im_predictor: SAM2ImagePredictor
+        image: np.ndarray in RGB format uint8
+        prompt_points: np.ndarray of shape (N, 2)
+        prompt_labels: np.ndarray of shape (N,)
+        prompt_box: np.ndarray of shape (4,)
+        multimask_output: returns 3 masks if True, otherwise only the best mask
+
+    Returns:
+        masks: np.ndarray of shape (H, W)
+        scores: list of float
+        masks_logits: np.ndarray of shape (H, W)
+    """
+    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+        # Set embeddings
+        im_predictor.set_image(image)
+        # Run prediction
+        masks, scores, masks_logits = im_predictor.predict(
+            point_coords=prompt_points,
+            point_labels=prompt_labels,
+            box=prompt_box,
+            normalize_coords=True,
+            multimask_output=multimask_output,
+        )
+        return masks, scores, masks_logits
+
+
+def predict_video(
+    video_path: str,
+    hf_model_url: str,
+    prompt_points: np.ndarray,
+    prompt_labels: np.ndarray,
+    prompt_box: np.ndarray | None = None,
+    max_frames: int | None = None,
+) -> dict:
+    video_predictor = SAM2VideoPredictor.from_pretrained(hf_model_url)
+    return predict_video_from_model(
+        video_predictor=video_predictor,
+        video_path=video_path,
+        start_frame_idx=0,
+        prompt_points=prompt_points,
+        prompt_labels=prompt_labels,
+        max_frames=max_frames,
+    )
+
+
+def predict_video_from_model(
+    video_predictor: SAM2VideoPredictor,
+    video_path: str,
+    start_frame_idx: int,
+    prompt_points: np.ndarray,
+    prompt_labels: np.ndarray,
+    prompt_box: np.ndarray | None = None,
+    max_frames: int | None = None,
+) -> dict:
+    """
+    Predict masks for a video using a SAM2 video model
+    """
+    with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+        # Init inference state, call predictor.reset_state(inference_state) to restart
+        state = video_predictor.init_state(video_path, offload_video_to_cpu=True)
+
+        # add new prompts and instantly get the output on the same frame
+        # we don't change the prompt after the first frame
+        frame_idx, object_ids, masks_logits = video_predictor.add_new_points_or_box(
+            state,
+            frame_idx=start_frame_idx,
+            obj_id=0,
+            points=prompt_points,
+            labels=prompt_labels,
+            box=prompt_box,
+        )
+
+        # run propagation throughout the video without updating the prompt and collect the results in a dict
+        video_frames_obj_masks = {}
+        for (
+            out_frame_idx,
+            out_obj_ids,
+            out_mask_logits,
+        ) in video_predictor.propagate_in_video(state):
+            if max_frames is not None and out_frame_idx >= max_frames:
+                break
+            video_frames_obj_masks[out_frame_idx] = {
+                out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
+                for i, out_obj_id in enumerate(out_obj_ids)
+            }
+        return video_frames_obj_masks
 
 
 def do_parsing():
@@ -162,6 +414,12 @@ def do_parsing():
         help="Image filepath",
     )
     parser.add_argument(
+        "--max_frames",
+        type=int,
+        required=False,
+        help="Maximum number of frames to process (start from 0 excluding start_frame_idx)",
+    )
+    parser.add_argument(
         "--show_best",
         action="store_true",
         help="Show the mask with the highest score only",
@@ -169,7 +427,7 @@ def do_parsing():
     parser.add_argument(
         "--show_with_mpl",
         action="store_true",
-        help="Show the results with matplotlib interactively"
+        help="Show the results with matplotlib interactively",
     )
     parser.add_argument(
         "--output_dir",
@@ -183,6 +441,9 @@ def do_parsing():
 def main():
     args = do_parsing()
     print(args)
+
+    if args.image_path:
+        assert args.max_frames is None, "Cannot set both max_frames and image_path"
 
     assert (
         int(args.image_path is not None) + int(args.video_path is not None) == 1
@@ -200,26 +461,23 @@ def main():
         # Test box prompt valid for cat.jpg image
         prompt_box = np.array([170, 50, 340, 310])
 
-        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-            # Set embeddings
-            im_predictor.set_image(image)
-            # Run prediction
-            masks, scores, masks_logits = im_predictor.predict(
-                point_coords=prompt_points,
-                point_labels=prompt_labels,
-                box=prompt_box,
-                normalize_coords=True,
-                multimask_output=not args.show_best,
-            )
+        masks, scores, masks_logits = predict_image_from_model(
+            im_predictor,
+            image,
+            prompt_points=prompt_points,
+            prompt_labels=prompt_labels,
+            prompt_box=prompt_box,
+            multimask_output=not args.show_best,
+        )
 
-        images_with_masks = get_and_show_masks(
+        images_with_masks = get_and_show_masks_image(
             image_canvas=image,
             masks=masks,
             scores=scores,
             point_coords=prompt_points,
             input_labels=prompt_labels,
             box_coords=prompt_box,
-            plt_show=args.show_with_mpl
+            plt_show=args.show_with_mpl,
         )
         assert len(images_with_masks) > 0, "No images with masks to draw"
         os.makedirs(args.output_dir, exist_ok=True)
@@ -229,77 +487,38 @@ def main():
                     args.output_dir,
                     f"{Path(args.image_path).stem}_{idx}_score_{scores[idx]}.jpg",
                 ),
-                image_with_masks
+                image_with_masks,
             )
 
     else:
-        predictor = SAM2VideoPredictor.from_pretrained(args.hf_model_url)
+        video_predictor = SAM2VideoPredictor.from_pretrained(args.hf_model_url)
 
-        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-            # Init inference state, call predictor.reset_state(inference_state) to restart
-            state = predictor.init_state(args.video_path, offload_video_to_cpu=True)
+        # Test a point valid for people_walking_2.mp4 video
+        prompt_points = np.array([[712, 578]])
+        # Prompt label is necessary to assign positive (1) and negative (0) points
+        prompt_labels = np.array([1])
+        # No box prompt
+        prompt_box = None
+        # Skip the first 4 frames
+        start_frame_idx = 4
+        video_frames_obj_masks = predict_video_from_model(
+            video_predictor,
+            video_path=args.video_path,
+            start_frame_idx=start_frame_idx,
+            prompt_points=prompt_points,
+            prompt_labels=prompt_labels,
+            prompt_box=prompt_box,
+            max_frames=args.max_frames,
+        )
 
-            # Test a point valid for people_walking_2.mp4 video
-            prompt_points = np.array([[712, 578]])
-            # Prompt label is necessary to assign positive (1) and negative (0) points
-            prompt_labels = np.array([1])
-
-            start_frame_idx = 4
-
-            # add new prompts and instantly get the output on the same frame
-            frame_idx, object_ids, masks_logits = predictor.add_new_points_or_box(
-                state,
-                frame_idx=start_frame_idx,
-                obj_id=0,
-                points=prompt_points,
-                labels=prompt_labels,
-            )
-
-            max_frames = 50
-
-            # run propagation throughout the video without updating the prompt and collect the results in a dict
-            video_segments = (
-                {}
-            )  # video_segments contains the per-frame segmentation results
-            for (
-                out_frame_idx,
-                out_obj_ids,
-                out_mask_logits,
-            ) in predictor.propagate_in_video(state):
-                if out_frame_idx >= max_frames:
-                    break
-                video_segments[out_frame_idx] = {
-                    out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
-                    for i, out_obj_id in enumerate(out_obj_ids)
-                }
-
-            # vis_frame_stride = 30
-            plt.close("all")
-
-            # Open the video again and draw masks on the frames
-            # TODO: Create an output video
-            with open(args.video_path, "rb") as f:
-                vr = VideoReader(f, ctx=cpu(0))
-            print("video frames:", len(vr))
-            # The simplest way is to directly access frames
-            for i in range(len(vr)):
-                if i >= max_frames:
-                    break
-                # the video reader will handle seeking and skipping in the most efficient manner
-                frame = vr[i]
-                plt.title(f"frame {i}")
-                # TODO: This assumes the frames are already saved as images
-                # plt.imshow(Image.open(os.path.join(video_dir, frame_names[out_frame_idx])))
-                plt.imshow(frame)
-                if i in video_segments.keys():
-                    for out_obj_id, out_mask in video_segments[i].items():
-                        mask_image = show_mask_video(
-                            out_mask, plt.gca(), obj_id=out_obj_id
-                        )
-                        plt.show()
-                        cv2.imwrite(
-                            f"./data/{i}_{out_obj_id}.jpg", mask_image[:, :, :3] * 255
-                        )
+        assert len(video_frames_obj_masks) > 0, "No video frames with masks to draw"
+        save_and_show_masks_video(
+            video_path=args.video_path,
+            video_frames_obj_masks=video_frames_obj_masks,
+            output_dir=args.output_dir,
+            max_frames=args.max_frames,
+            plt_show=args.show_with_mpl,
+        )
 
 
 if __name__ == "__main__":
