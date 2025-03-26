@@ -13,10 +13,10 @@ import cv2
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from cv2 import VideoWriter
 
 from decord import VideoReader
-from decord import cpu, gpu
+from decord import cpu
+from langchain_core.tools import tool
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
 
@@ -269,6 +269,7 @@ def save_and_show_masks_video(
     return output_video_path
 
 
+@tool
 def predict_image(
     image_path: str,
     hf_model_url: str,
@@ -277,6 +278,22 @@ def predict_image(
     prompt_box: np.ndarray | None = None,
     multimask_output: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Predict masks for an image using a SAM2 image model
+    
+    Args:
+        image_path: str, path to the image to predict masks for
+        hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small
+        prompt_points: np.ndarray of shape (N, 2), optional points to prompt the model
+        prompt_labels: np.ndarray of shape (N,), optional labels to prompt the model
+        prompt_box: np.ndarray of shape (4,), optional box to prompt the model
+        multimask_output: bool, optional, whether to return multiple masks
+
+    Returns:
+        masks: np.ndarray of shape (H, W)
+        scores: list of float
+        masks_logits: np.ndarray of shape (H, W)
+    """
     im_predictor = SAM2ImagePredictor.from_pretrained(hf_model_url)
     image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
     return predict_image_from_model(
@@ -298,7 +315,7 @@ def predict_image_from_model(
     multimask_output: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Predict masks for an image using a SAM2 image model
+    Predict masks for an image using an initialized SAM2ImagePredictor
 
     Args:
         im_predictor: SAM2ImagePredictor
@@ -335,6 +352,20 @@ def predict_video(
     prompt_box: np.ndarray | None = None,
     max_frames: int | None = None,
 ) -> dict:
+    """
+    Predict masks for a video using a SAM2 video model
+    
+    Args:
+        video_path: str, path to the video to predict masks for
+        hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small
+        prompt_points: np.ndarray of shape (N, 2)
+        prompt_labels: np.ndarray of shape (N,)
+        prompt_box: np.ndarray of shape (4,)
+        max_frames: int, optional, maximum number of frames to process
+    
+    Returns:
+        video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks
+    """
     video_predictor = SAM2VideoPredictor.from_pretrained(hf_model_url)
     return predict_video_from_model(
         video_predictor=video_predictor,
@@ -342,6 +373,7 @@ def predict_video(
         start_frame_idx=0,
         prompt_points=prompt_points,
         prompt_labels=prompt_labels,
+        prompt_box=prompt_box,
         max_frames=max_frames,
     )
 
@@ -356,7 +388,19 @@ def predict_video_from_model(
     max_frames: int | None = None,
 ) -> dict:
     """
-    Predict masks for a video using a SAM2 video model
+    Predict masks for a video using an initialized SAM2VideoPredictor
+
+    Args:
+        video_predictor: SAM2VideoPredictor
+        video_path: str, path to the video to predict masks for
+        start_frame_idx: int, index of the first frame to process
+        prompt_points: np.ndarray of shape (N, 2)
+        prompt_labels: np.ndarray of shape (N,)
+        prompt_box: np.ndarray of shape (4,)
+        max_frames: int, optional, maximum number of frames to process
+
+    Returns:
+        video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks 
     """
     with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
         # Init inference state, call predictor.reset_state(inference_state) to restart
