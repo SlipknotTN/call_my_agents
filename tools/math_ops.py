@@ -70,9 +70,12 @@ def floor(a: float) -> float:
 
 
 @tool
-def round(a: float) -> float:
-    """Round a number to the nearest integer."""
-    return math.round(a)
+def round(number: float, ndigits: int = None) -> float:
+    """
+    Round a number to the nearest integer.
+    If ndigits is provided, round to that many decimal places.
+    """
+    return math.round(number, ndigits)
 
 
 @tool
