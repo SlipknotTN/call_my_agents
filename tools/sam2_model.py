@@ -270,43 +270,54 @@ def save_and_show_masks_video(
 
 
 @tool
-def predict_image(
+def predict_image_masks(
     image_path: str,
     hf_model_url: str,
-    prompt_points: np.ndarray | None = None,
-    prompt_labels: np.ndarray | None = None,
-    prompt_box: np.ndarray | None = None,
+    prompt_points: list[list[float]] | None = None,
+    prompt_labels: list[int] | None = None,
+    prompt_box: list[float] | None = None,
     multimask_output: bool = False,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> dict:
     """
-    Predict masks for an image using a SAM2 image model
-    
+    Predict masks for an image using a SAM2 image model. Pydantic compatible, no need numpy arrays in the interface.
+
     Args:
         image_path: str, path to the image to predict masks for
         hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small
-        prompt_points: np.ndarray of shape (N, 2), optional points to prompt the model
-        prompt_labels: np.ndarray of shape (N,), optional labels to prompt the model
-        prompt_box: np.ndarray of shape (4,), optional box to prompt the model
+        prompt_points: list of [x, y] coordinates, optional points to prompt the model
+        prompt_labels: list of integers (0 or 1), optional labels to prompt the model
+        prompt_box: list of [x1, y1, x2, y2], optional box to prompt the model
         multimask_output: bool, optional, whether to return multiple masks
 
     Returns:
-        masks: np.ndarray of shape (H, W)
-        scores: list of float
-        masks_logits: np.ndarray of shape (H, W)
+        dict with masks, scores, and mask_logits encoded as lists
     """
     im_predictor = SAM2ImagePredictor.from_pretrained(hf_model_url)
     image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
-    return predict_image_from_model(
+
+    # Convert lists to numpy arrays if provided
+    np_prompt_points = np.array(prompt_points) if prompt_points is not None else None
+    np_prompt_labels = np.array(prompt_labels) if prompt_labels is not None else None
+    np_prompt_box = np.array(prompt_box) if prompt_box is not None else None
+
+    masks, scores, masks_logits = predict_image_masks_from_model(
         im_predictor=im_predictor,
         image=image,
-        prompt_points=prompt_points,
-        prompt_labels=prompt_labels,
-        prompt_box=prompt_box,
+        prompt_points=np_prompt_points,
+        prompt_labels=np_prompt_labels,
+        prompt_box=np_prompt_box,
         multimask_output=multimask_output,
     )
 
+    # Convert numpy arrays to lists for Pydantic compatibility
+    return {
+        "masks": masks.tolist(),
+        "scores": scores.tolist(),
+        "masks_logits": masks_logits.tolist(),
+    }
 
-def predict_image_from_model(
+
+def predict_image_masks_from_model(
     im_predictor: SAM2ImagePredictor,
     image: np.ndarray,
     prompt_points: np.ndarray | None = None,
@@ -344,41 +355,60 @@ def predict_image_from_model(
         return masks, scores, masks_logits
 
 
-def predict_video(
+@tool
+def predict_video_masks(
     video_path: str,
     hf_model_url: str,
-    prompt_points: np.ndarray,
-    prompt_labels: np.ndarray,
-    prompt_box: np.ndarray | None = None,
+    prompt_points: list[list[float]],
+    prompt_labels: list[int],
+    prompt_box: list[float] | None = None,
     max_frames: int | None = None,
 ) -> dict:
     """
-    Predict masks for a video using a SAM2 video model
-    
+    Predict masks for a video using a SAM2 video model. Pydantic compatible, no need numpy arrays in the interface.
+
     Args:
         video_path: str, path to the video to predict masks for
         hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small
-        prompt_points: np.ndarray of shape (N, 2)
-        prompt_labels: np.ndarray of shape (N,)
-        prompt_box: np.ndarray of shape (4,)
+        prompt_points: list of lists, each inner list contains [x, y] coordinates
+        prompt_labels: list of integers (0 for negative, 1 for positive points)
+        prompt_box: list of 4 values [x1, y1, x2, y2] defining a bounding box
         max_frames: int, optional, maximum number of frames to process
-    
+
     Returns:
         video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks
     """
     video_predictor = SAM2VideoPredictor.from_pretrained(hf_model_url)
-    return predict_video_from_model(
+
+    # Convert lists to numpy arrays for processing
+    np_prompt_points = np.array(prompt_points, dtype=np.float32)
+    np_prompt_labels = np.array(prompt_labels, dtype=np.int32)
+    np_prompt_box = np.array(prompt_box, dtype=np.float32) if prompt_box else None
+
+    result = predict_video_masks_from_model(
         video_predictor=video_predictor,
         video_path=video_path,
         start_frame_idx=0,
-        prompt_points=prompt_points,
-        prompt_labels=prompt_labels,
-        prompt_box=prompt_box,
+        prompt_points=np_prompt_points,
+        prompt_labels=np_prompt_labels,
+        prompt_box=np_prompt_box,
         max_frames=max_frames,
     )
 
+    # Convert any numpy arrays in the result to lists for Pydantic compatibility
+    pydantic_result = {}
+    for frame_idx, frame_data in result.items():
+        pydantic_result[frame_idx] = {}
+        for obj_id, mask in frame_data.items():
+            if isinstance(mask, np.ndarray):
+                pydantic_result[frame_idx][obj_id] = mask.tolist()
+            else:
+                pydantic_result[frame_idx][obj_id] = mask
 
-def predict_video_from_model(
+    return pydantic_result
+
+
+def predict_video_masks_from_model(
     video_predictor: SAM2VideoPredictor,
     video_path: str,
     start_frame_idx: int,
@@ -400,7 +430,7 @@ def predict_video_from_model(
         max_frames: int, optional, maximum number of frames to process
 
     Returns:
-        video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks 
+        video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks
     """
     with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
         # Init inference state, call predictor.reset_state(inference_state) to restart
@@ -504,7 +534,7 @@ def main():
         # Test box prompt valid for cat.jpg image
         prompt_box = np.array([170, 50, 340, 310])
 
-        masks, scores, masks_logits = predict_image_from_model(
+        masks, scores, masks_logits = predict_image_masks_from_model(
             im_predictor,
             image,
             prompt_points=prompt_points,
@@ -544,7 +574,7 @@ def main():
         prompt_box = None
         # Skip the first 4 frames
         start_frame_idx = 4
-        video_frames_obj_masks = predict_video_from_model(
+        video_frames_obj_masks = predict_video_masks_from_model(
             video_predictor,
             video_path=args.video_path,
             start_frame_idx=start_frame_idx,
