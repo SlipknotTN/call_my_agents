@@ -1,23 +1,10 @@
 import argparse
 
-from langchain_ollama import ChatOllama
 from langchain_core.tools import tool
+from langchain_ollama import ChatOllama
 
-from tools.math_ops import (
-    add,
-    multiply,
-    divide,
-    subtract,
-    sin,
-    cos,
-    radians,
-    exponentiation,
-    sqrt,
-    ceil,
-    floor,
-    round,
-    log,
-)
+from tools.math_ops import (add, ceil, cos, divide, exponentiation, floor, log,
+                            multiply, radians, round, sin, sqrt, subtract)
 from tools.sam2_model import predict_image_masks, predict_video_masks
 
 

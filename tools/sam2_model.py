@@ -10,12 +10,10 @@ import os
 from pathlib import Path
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
-
-from decord import VideoReader
-from decord import cpu
+from decord import VideoReader, cpu
 from langchain_core.tools import tool
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
