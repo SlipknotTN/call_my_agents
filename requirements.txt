@@ -9,3 +9,4 @@ langgraph-codeact==0.1.0
 matplotlib==3.10.1
 opencv-python==4.11.0.86
 # sam2 Install from https://github.com/facebookresearch/sam2?tab=readme-ov-file#installation
+ultralytics==8.3.97
