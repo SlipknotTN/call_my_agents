@@ -2,7 +2,9 @@ import argparse
 import os
 
 import cv2
+import numpy as np
 import ultralytics
+from skimage.transform import resize
 from ultralytics import YOLO
 
 
@@ -86,7 +88,7 @@ def predict_poses_from_model(
     result_ultra = results_ultra[0]
     bboxes = result_ultra.boxes
     keypoints = result_ultra.keypoints
-    result_dict["bboxes"] = bbox.xyxyn.cpu().numpy().tolist()
+    result_dict["bboxes"] = bboxes.xyxyn.cpu().numpy().tolist()
     result_dict["scores"] = [score.item() for score in bboxes.conf]
     result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
     result_dict["keypoints"] = keypoints.data.cpu().numpy().tolist()
@@ -135,9 +137,7 @@ def main():
         result_ultra, result_dict = predict_poses_from_model(
             model=model, image_path=args.image_path
         )
-    
-    # TODO: Process the dictionary and build a custom visualizer function
-        
+
     # Process results list
     if args.show_pred:
         result_ultra.show()
@@ -147,8 +147,8 @@ def main():
         if args.output_viz_format == "ultralytics":
             result_ultra.save(filename=args.output_path)
         else:
-            # TODO: Implement custom visualization
-            canvas = cv2.imread(args.image_path)
+            # Custom visualization, example of dictionary output usage
+            canvas = cv2.imread(args.image_path).astype(np.float64)
             image_width, image_height = canvas.shape[1], canvas.shape[0]
             for idx, bbox in enumerate(result_dict["bboxes"]):
                 abs_bbox = [
@@ -157,9 +157,48 @@ def main():
                     int(bbox[2] * image_width),  # x2
                     int(bbox[3] * image_height),  # y2
                 ]
-                cv2.rectangle(canvas, (abs_bbox[0], abs_bbox[1]), (abs_bbox[2], abs_bbox[3]), (0, 0, 255), 2)
-                cv2.putText(canvas, f"{result_dict['classes'][idx]} {result_dict['scores'][idx]:.2f}", (abs_bbox[0], abs_bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            cv2.imwrite(args.output_path, canvas)
+                cv2.rectangle(
+                    canvas,
+                    (abs_bbox[0], abs_bbox[1]),
+                    (abs_bbox[2], abs_bbox[3]),
+                    (0, 0, 255),
+                    2,
+                )
+                cv2.putText(
+                    canvas,
+                    f"{result_dict['classes'][idx]} {result_dict['scores'][idx]:.2f}",
+                    (abs_bbox[0], abs_bbox[1] - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 255),
+                    2,
+                )
+            if "masks" in result_dict:
+                # Convert masks to numpy array, shape is (C, H, W) where C is the number of detected objects
+                # The single mask H, W is the same as the model input size, not the image size
+                masks_np = np.array(result_dict["masks"]).astype(
+                    np.float64
+                )  # Values are 0.0 or 1.0
+                # FIXME: The mask is not as good as the one from utlralytics library when the objects are small
+                # Check the actual upsample code in ultralytics library
+                # Upsample all masks in a single pass using scikit-image for high accuracy
+                rsz_masks_np = resize(
+                    masks_np,
+                    (masks_np.shape[0], image_height, image_width),
+                    order=3,  # cubic interpolation for accuracy
+                    anti_aliasing=True,  # reduce artifacts
+                    preserve_range=True,
+                ).astype(np.float64)
+                for rsz_mask_np in rsz_masks_np:
+                    # Resize masks to match image dimensions
+                    red_overlay = (0, 0, 255)
+                    alpha = 0.5
+                    mask_3dims = np.expand_dims(rsz_mask_np, axis=2)
+                    # Apply the mask with transparency (0.5 alpha)
+                    canvas = canvas * (1 - alpha * mask_3dims) + red_overlay * (
+                        alpha * mask_3dims
+                    )
+            cv2.imwrite(args.output_path, canvas.astype(np.uint8))
 
 
 if __name__ == "__main__":
