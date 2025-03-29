@@ -1,30 +1,9 @@
 import argparse
 import os
 
+import cv2
 import ultralytics
 from ultralytics import YOLO
-
-
-def do_parsing():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--image_path", type=str, default="./data/cat.jpg")
-    parser.add_argument(
-        "--model_path",
-        type=str,
-        default="yolo11s-seg.pt",
-        choices=[
-            "yolo11s-seg.pt",
-            "yolo11s-pose.pt",
-            "yolo11m-seg.pt",
-            "yolo11m-pose.pt",
-        ],
-        help="Pretrained YOLO model",
-    )
-    parser.add_argument(
-        "--show_pred", action="store_true", help="Show predicted bboxes"
-    )
-    parser.add_argument("--output_path", type=str, required=False, help="Output path")
-    return parser.parse_args()
 
 
 def predict_bboxes_and_masks(
@@ -75,7 +54,7 @@ def predict_bboxes_and_masks_from_model(
     assert len(results_ultra) == 1, "Only one image is supported"
     result_ultra = results_ultra[0]
     bboxes = result_ultra.boxes
-    result_dict["bboxes"] = [bbox.xyxyn.cpu().numpy().tolist() for bbox in bboxes]
+    result_dict["bboxes"] = bboxes.xyxyn.cpu().numpy().tolist()
     result_dict["scores"] = [score.item() for score in bboxes.conf]
     result_dict["masks"] = result_ultra.masks.data.cpu().numpy().tolist()
     result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
@@ -107,12 +86,41 @@ def predict_poses_from_model(
     result_ultra = results_ultra[0]
     bboxes = result_ultra.boxes
     keypoints = result_ultra.keypoints
-    result_dict["bboxes"] = [bbox.xyxyn.cpu().numpy().tolist() for bbox in bboxes]
+    result_dict["bboxes"] = bbox.xyxyn.cpu().numpy().tolist()
     result_dict["scores"] = [score.item() for score in bboxes.conf]
     result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
     result_dict["keypoints"] = keypoints.data.cpu().numpy().tolist()
     result_dict["keypoints_scores"] = keypoints.conf.cpu().numpy().tolist()
     return result_ultra, result_dict
+
+
+def do_parsing():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image_path", type=str, default="./data/cat.jpg")
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        default="yolo11s-seg.pt",
+        choices=[
+            "yolo11s-seg.pt",
+            "yolo11s-pose.pt",
+            "yolo11m-seg.pt",
+            "yolo11m-pose.pt",
+        ],
+        help="Pretrained YOLO model",
+    )
+    parser.add_argument(
+        "--show_pred", action="store_true", help="Show predictions with Ultralytics"
+    )
+    parser.add_argument(
+        "--output_viz_format",
+        type=str,
+        default="ultralytics",
+        choices=["ultralytics", "custom"],
+        help="Output visualization format",
+    )
+    parser.add_argument("--output_path", type=str, required=False, help="Output path")
+    return parser.parse_args()
 
 
 def main():
@@ -136,7 +144,22 @@ def main():
     if args.output_path:
         # Save to disk
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-        result_ultra.save(filename=args.output_path)
+        if args.output_viz_format == "ultralytics":
+            result_ultra.save(filename=args.output_path)
+        else:
+            # TODO: Implement custom visualization
+            canvas = cv2.imread(args.image_path)
+            image_width, image_height = canvas.shape[1], canvas.shape[0]
+            for idx, bbox in enumerate(result_dict["bboxes"]):
+                abs_bbox = [
+                    int(bbox[0] * image_width),  # x1
+                    int(bbox[1] * image_height),  # y1
+                    int(bbox[2] * image_width),  # x2
+                    int(bbox[3] * image_height),  # y2
+                ]
+                cv2.rectangle(canvas, (abs_bbox[0], abs_bbox[1]), (abs_bbox[2], abs_bbox[3]), (0, 0, 255), 2)
+                cv2.putText(canvas, f"{result_dict['classes'][idx]} {result_dict['scores'][idx]:.2f}", (abs_bbox[0], abs_bbox[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            cv2.imwrite(args.output_path, canvas)
 
 
 if __name__ == "__main__":
