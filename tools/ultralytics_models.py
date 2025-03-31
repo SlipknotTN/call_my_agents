@@ -4,8 +4,8 @@ import os
 import cv2
 import numpy as np
 import ultralytics
-from skimage.transform import resize
 from ultralytics import YOLO
+from ultralytics.utils.ops import scale_image as ultra_scale_mask
 
 
 def predict_bboxes_and_masks(
@@ -179,24 +179,15 @@ def main():
                 masks_np = np.array(result_dict["masks"]).astype(
                     np.float64
                 )  # Values are 0.0 or 1.0
-                # FIXME: The mask is not as good as the one from utlralytics library when the objects are small
-                # Check the actual upsample code in ultralytics library
-                # Upsample all masks in a single pass using scikit-image for high accuracy
-                rsz_masks_np = resize(
-                    masks_np,
-                    (masks_np.shape[0], image_height, image_width),
-                    order=3,  # cubic interpolation for accuracy
-                    anti_aliasing=True,  # reduce artifacts
-                    preserve_range=True,
-                ).astype(np.float64)
-                for rsz_mask_np in rsz_masks_np:
-                    # Resize masks to match image dimensions
+                for mask_np in masks_np:
+                    # Resize each mask to the image input size
+                    # (it is necessary to use the ultralytics library function to correctly apply the padding)
+                    rsz_mask_np = ultra_scale_mask(mask_np, canvas.shape)
+                    # Apply the mask with transparency (0.5 alpha)
                     red_overlay = (0, 0, 255)
                     alpha = 0.5
-                    mask_3dims = np.expand_dims(rsz_mask_np, axis=2)
-                    # Apply the mask with transparency (0.5 alpha)
-                    canvas = canvas * (1 - alpha * mask_3dims) + red_overlay * (
-                        alpha * mask_3dims
+                    canvas = canvas * (1 - alpha * rsz_mask_np) + red_overlay * (
+                        alpha * rsz_mask_np
                     )
             cv2.imwrite(args.output_path, canvas.astype(np.uint8))
 
