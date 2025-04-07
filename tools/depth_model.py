@@ -105,12 +105,12 @@ def do_parsing():
     parser.add_argument(
         "--min_value",
         type=float,
-        help="Minimum value in meters to save the output image in range mode. Values are clipped to [min_value, max_value]"
+        help="Minimum value in meters to save the output image in range mode. Values are clipped to [min_value, max_value]",
     )
     parser.add_argument(
         "--max_value",
         type=float,
-        help="Maximum value in meters to save the output image in range mode. Values are clipped to [min_value, max_value]"
+        help="Maximum value in meters to save the output image in range mode. Values are clipped to [min_value, max_value]",
     )
     parser.add_argument(
         "--output_dir",
@@ -128,13 +128,18 @@ def main():
     image = Image.open(args.image_path)
 
     if args.output_mode == "range":
-        assert args.min_value is not None, "min_value must be set with output_mode range"
-        assert args.max_value is not None, "max_value must be set with output_mode range"
-
+        assert (
+            args.min_value is not None
+        ), "min_value must be set with output_mode range"
+        assert (
+            args.max_value is not None
+        ), "max_value must be set with output_mode range"
 
     if args.model_family == "distill":
 
-        assert args.output_mode == "norm", "Only norm output mode is supported for distill model, since the output is not in meters"
+        assert (
+            args.output_mode == "norm"
+        ), "Only norm output mode is supported for distill model, since the output is not in meters"
 
         image_processor = AutoImageProcessor.from_pretrained(args.hf_model_url)
         model = AutoModelForDepthEstimation.from_pretrained(args.hf_model_url)
@@ -157,10 +162,15 @@ def main():
         # The values are reversed. 0.0 corresponds to the farthest points
         predicted_depth_np = predicted_depth_np_inv.max() - predicted_depth_np_inv
         predicted_depth_meters_np = None
-        predicted_depth_norm_np = (predicted_depth_np - predicted_depth_np.min()) / (predicted_depth_np.max() - predicted_depth_np.min())
-        
+        predicted_depth_norm_np = (predicted_depth_np - predicted_depth_np.min()) / (
+            predicted_depth_np.max() - predicted_depth_np.min()
+        )
+
         depth_colored_hwc = colorize_depth_maps(
-            predicted_depth_np[None, ...], min_depth=predicted_depth_np.min(), max_depth=predicted_depth_np.max() , cmap="Spectral"
+            predicted_depth_np[None, ...],
+            min_depth=predicted_depth_np.min(),
+            max_depth=predicted_depth_np.max(),
+            cmap="Spectral",
         ).squeeze()
 
     elif args.model_family == "depthpro":
@@ -182,13 +192,25 @@ def main():
         )
         field_of_view_px = post_processed_output[0]["field_of_view"]
         focal_length_px = post_processed_output[0]["focal_length"]
-        predicted_depth_meters_np = post_processed_output[0]["predicted_depth"].detach().cpu().numpy()
-        predicted_depth_norm_np = (predicted_depth_meters_np - predicted_depth_meters_np.min()) / (predicted_depth_meters_np.max() - predicted_depth_meters_np.min())
+        predicted_depth_meters_np = (
+            post_processed_output[0]["predicted_depth"].detach().cpu().numpy()
+        )
+        predicted_depth_norm_np = (
+            predicted_depth_meters_np - predicted_depth_meters_np.min()
+        ) / (predicted_depth_meters_np.max() - predicted_depth_meters_np.min())
 
         depth_colored_hwc = colorize_depth_maps(
             predicted_depth_meters_np[None, ...],
-            min_depth=predicted_depth_meters_np.min() if args.output_mode == "norm" else args.min_value,
-            max_depth=predicted_depth_meters_np.max() if args.output_mode == "norm" else args.max_value,
+            min_depth=(
+                predicted_depth_meters_np.min()
+                if args.output_mode == "norm"
+                else args.min_value
+            ),
+            max_depth=(
+                predicted_depth_meters_np.max()
+                if args.output_mode == "norm"
+                else args.max_value
+            ),
             cmap="Spectral",
         ).squeeze()
 
@@ -204,7 +226,9 @@ def main():
     depth_colored_im.save(os.path.join(args.output_dir, output_filename))
     np.save(os.path.join(args.output_dir, "depth_norm.npy"), predicted_depth_norm_np)
     if predicted_depth_meters_np is not None:
-        np.save(os.path.join(args.output_dir, "depth_meters.npy"), predicted_depth_meters_np)
+        np.save(
+            os.path.join(args.output_dir, "depth_meters.npy"), predicted_depth_meters_np
+        )
 
 
 if __name__ == "__main__":
