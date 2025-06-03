@@ -3,8 +3,10 @@ import os
 
 import cv2
 import numpy as np
+from pyparsing import Optional
 import ultralytics
 from ultralytics import YOLO
+from ultralytics import YOLOE
 from ultralytics.utils.ops import scale_image as ultra_scale_mask
 
 
@@ -95,6 +97,24 @@ def predict_poses_from_model(
     result_dict["keypoints_scores"] = keypoints.conf.cpu().numpy().tolist()
     return result_ultra, result_dict
 
+def predict_segmentation_from_text_prompt_and_model(
+    model: ultralytics.models.yolo.model.YOLOE,
+    image_path: str,
+    class_names: Optional[list[str]] = None,
+) -> tuple[ultralytics.engine.results.Results, dict]:
+    """
+    Predict segmentation from a YOLO open vocab model and return YOLO results and dictionary with bboxes, scores and masks.
+    """
+    # Set text prompt to detect person and bus. You only need to do this once after you load the model.
+    if class_names is not None:
+        model.set_classes(class_names, model.get_text_pe(class_names))
+    
+    # Run detection on the given image
+    results = model.predict(image_path)
+    
+    # TODO: Implement dictionary output
+    return results[0], {}
+
 
 def do_parsing():
     parser = argparse.ArgumentParser()
@@ -108,8 +128,17 @@ def do_parsing():
             "yolo11s-pose.pt",
             "yolo11m-seg.pt",
             "yolo11m-pose.pt",
+            "yoloe-11s-seg.pt",
+            "yoloe-11m-seg.pt",
         ],
         help="Pretrained YOLO model",
+    )
+    parser.add_argument(
+        "--text_classes",
+        type=str,
+        default=None,
+        help="Text prompt to detect classes with open vocab model, otherwise prompt free detection is run. "
+        "With the other models this is ignored.",
     )
     parser.add_argument(
         "--show_pred", action="store_true", help="Show predictions with Ultralytics"
@@ -127,16 +156,25 @@ def do_parsing():
 
 def main():
     args = do_parsing()
-    model = YOLO(args.model_path)
 
-    if args.model_path.endswith("-seg.pt"):
+
+    if args.model_path.startswith("yolo11") and args.model_path.endswith("-seg.pt"):
+        model = YOLO(args.model_path)
         result_ultra, result_dict = predict_bboxes_and_masks_from_model(
             model=model, image_path=args.image_path
         )
-    else:
+    elif args.model_path.startswith("yolo11") and args.model_path.endswith("-pose.pt"):
+        model = YOLO(args.model_path)
         result_ultra, result_dict = predict_poses_from_model(
             model=model, image_path=args.image_path
         )
+    elif args.model_path.startswith("yoloe") and args.model_path.endswith("-seg.pt"):
+        model = YOLOE(args.model_path)
+        result_ultra, result_dict = predict_segmentation_from_text_prompt_and_model(
+            model=model, image_path=args.image_path, text_prompt=args.text_classes
+        )
+    else:
+        raise ValueError(f"Model {args.model_path} is not supported")
 
     # Process results list
     if args.show_pred:
