@@ -10,4 +10,4 @@ matplotlib==3.10.1
 opencv-python==4.11.0.86
 # sam2 Install from https://github.com/facebookresearch/sam2?tab=readme-ov-file#installation
 transformers==4.50.3
-ultralytics==8.3.97
+ultralytics==8.3.147
