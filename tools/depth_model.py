@@ -6,18 +6,15 @@ e.g. https://huggingface.co/depth-anything/Depth-Anything-V2-Metric-Outdoor-Larg
 """
 
 import argparse
-import matplotlib
 import os
 
+import matplotlib
 import numpy as np
 import torch
 from PIL import Image
-from transformers import (
-    AutoImageProcessor,
-    AutoModelForDepthEstimation,
-    DepthProForDepthEstimation,
-    DepthProImageProcessorFast,
-)
+from transformers import (AutoImageProcessor, AutoModelForDepthEstimation,
+                          DepthProForDepthEstimation,
+                          DepthProImageProcessorFast)
 
 
 def colorize_depth_maps(
@@ -135,6 +132,7 @@ def main():
             args.max_value is not None
         ), "max_value must be set with output_mode range"
 
+    # TODO: Create isolated functions for relative and meters models, with inverse output arg for relative model
     if args.model_family == "distill":
 
         assert (
