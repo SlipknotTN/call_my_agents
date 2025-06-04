@@ -3,10 +3,8 @@ import os
 
 import cv2
 import numpy as np
-from pyparsing import Optional
 import ultralytics
-from ultralytics import YOLO
-from ultralytics import YOLOE
+from ultralytics import YOLO, YOLOE
 from ultralytics.utils.ops import scale_image as ultra_scale_mask
 
 
@@ -38,20 +36,19 @@ def predict_bboxes_and_masks_from_model(
     model: ultralytics.models.yolo.model.YOLO, image_path: str
 ) -> tuple[
     ultralytics.engine.results.Results,
-    list[float],
-    list[list[float]],
-    list[list[float]],
+    dict[str, any],
 ]:
     """
-    Predict bboxes and masks from a YOLO model and return YOLO results, scores, bboxes and masks.
+    Predict bboxes and masks from a YOLO model and return YOLO results and dictionary with
+    bboxes, scores, masks and classes.
 
     Args:
         model: YOLO Segmentation model
         image_path: Path to the image to predict
 
     Returns:
-        result_ultra: YOLO results
-        result_dict: Dictionary with bboxes, scores and masks
+        result_ultra: YOLO segmentation model results
+        result_dict: Dictionary with bboxes, scores, masks and classes
     """
     results_ultra = model([image_path])
     result_dict = {"bboxes": [], "scores": [], "masks": [], "classes": []}
@@ -69,13 +66,19 @@ def predict_poses_from_model(
     model: ultralytics.models.yolo.model.YOLO, image_path: str
 ) -> tuple[
     ultralytics.engine.results.Results,
-    list[float],
-    list[list[float]],
-    list[list[float]],
-    list[list[float]],
+    dict[str, any],
 ]:
     """
-    Predict poses from a YOLO model and return YOLO results, scores, bboxes and keypoints.
+    Predict poses from a YOLO model and return YOLO results and dictionary
+    with bboxes, scores, classes, keypoints and keypoints scores.
+
+    Args:
+        model: YOLO Pose model
+        image_path: Path to the image to predict
+
+    Returns:
+        result_ultra: YOLO pose model results
+        result_dict: Dictionary with bboxes, scores, classes, keypoints and keypoints scores
     """
     results_ultra = model([image_path])
     result_dict = {
@@ -97,23 +100,42 @@ def predict_poses_from_model(
     result_dict["keypoints_scores"] = keypoints.conf.cpu().numpy().tolist()
     return result_ultra, result_dict
 
+
 def predict_segmentation_from_text_prompt_and_model(
     model: ultralytics.models.yolo.model.YOLOE,
     image_path: str,
-    class_names: Optional[list[str]] = None,
+    class_names: list[str] | None = None,
 ) -> tuple[ultralytics.engine.results.Results, dict]:
     """
-    Predict segmentation from a YOLO open vocab model and return YOLO results and dictionary with bboxes, scores and masks.
+    Predict segmentation from a YOLO open vocab model and return YOLO results and dictionary
+    with bboxes, scores, masks and classes.
+
+    Args:
+        model: YOLOE model
+        image_path: Path to the image to predict
+        class_names: Optional list of class names to detect
+
+    Returns:
+        result_ultra: YOLOE model results
+        result_dict: Dictionary with bboxes, scores, masks and classes (queried classes)
     """
     # Set text prompt to detect person and bus. You only need to do this once after you load the model.
     if class_names is not None:
         model.set_classes(class_names, model.get_text_pe(class_names))
-    
+
     # Run detection on the given image
-    results = model.predict(image_path)
-    
-    # TODO: Implement dictionary output
-    return results[0], {}
+    results_ultra = model.predict(image_path)
+
+    # Process results list to dictionary
+    result_dict = {"bboxes": [], "scores": [], "masks": [], "classes": []}
+    assert len(results_ultra) == 1, "Only one image is supported"
+    result_ultra = results_ultra[0]
+    bboxes = result_ultra.boxes
+    result_dict["bboxes"] = bboxes.xyxyn.cpu().numpy().tolist()
+    result_dict["scores"] = [score.item() for score in bboxes.conf]
+    result_dict["masks"] = result_ultra.masks.data.cpu().numpy().tolist()
+    result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
+    return result_ultra, result_dict
 
 
 def do_parsing():
@@ -137,6 +159,7 @@ def do_parsing():
         "--text_classes",
         type=str,
         default=None,
+        nargs="+",
         help="Text prompt to detect classes with open vocab model, otherwise prompt free detection is run. "
         "With the other models this is ignored.",
     )
@@ -157,7 +180,6 @@ def do_parsing():
 def main():
     args = do_parsing()
 
-
     if args.model_path.startswith("yolo11") and args.model_path.endswith("-seg.pt"):
         model = YOLO(args.model_path)
         result_ultra, result_dict = predict_bboxes_and_masks_from_model(
@@ -171,7 +193,7 @@ def main():
     elif args.model_path.startswith("yoloe") and args.model_path.endswith("-seg.pt"):
         model = YOLOE(args.model_path)
         result_ultra, result_dict = predict_segmentation_from_text_prompt_and_model(
-            model=model, image_path=args.image_path, text_prompt=args.text_classes
+            model=model, image_path=args.image_path, class_names=args.text_classes
         )
     else:
         raise ValueError(f"Model {args.model_path} is not supported")
@@ -184,6 +206,9 @@ def main():
         os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
         if args.output_viz_format == "ultralytics":
             result_ultra.save(filename=args.output_path)
+            print(
+                f"Image with predictions saved to '{args.output_path}' (ultralytics mode)"
+            )
         else:
             # Custom visualization, example of dictionary output usage
             canvas = cv2.imread(args.image_path).astype(np.float64)
@@ -228,6 +253,7 @@ def main():
                         alpha * rsz_mask_np
                     )
             cv2.imwrite(args.output_path, canvas.astype(np.uint8))
+            print(f"Image with predictions saved to '{args.output_path}' (cv2 mode)")
 
 
 if __name__ == "__main__":
