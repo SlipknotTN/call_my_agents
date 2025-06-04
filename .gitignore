@@ -9,5 +9,6 @@ data
 # Python
 *.pyc
 
-# Ultralytics
+# Models
 *.pt
+*.ts
