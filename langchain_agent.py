@@ -3,9 +3,23 @@ import argparse
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 
-from tools.math_ops import (add, ceil, cos, divide, exponentiation, floor, log,
-                            multiply, radians, round, sin, sqrt, subtract)
+from tools.math_ops import (
+    add,
+    ceil,
+    cos,
+    divide,
+    exponentiation,
+    floor,
+    log,
+    multiply,
+    radians,
+    round,
+    sin,
+    sqrt,
+    subtract,
+)
 from tools.sam2_model import predict_image_masks, predict_video_masks
+from tools.ultralytics_models import predict_bboxes_and_masks, predict_poses
 
 
 def do_parsing():
@@ -38,6 +52,8 @@ def main():
             log,
             predict_image_masks,
             predict_video_masks,
+            predict_bboxes_and_masks,
+            predict_poses,
         ]
     )
     output = llm_with_tools.invoke(args.text_prompt)

@@ -12,9 +12,23 @@ from langchain.chat_models import init_chat_model
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph_codeact import create_codeact
 
-from tools.math_ops import (add, ceil, cos, divide, exponentiation, floor, log,
-                            multiply, radians, round, sin, sqrt, subtract)
+from tools.math_ops import (
+    add,
+    ceil,
+    cos,
+    divide,
+    exponentiation,
+    floor,
+    log,
+    multiply,
+    radians,
+    round,
+    sin,
+    sqrt,
+    subtract,
+)
 from tools.sam2_model import predict_image_masks, predict_video_masks
+from tools.ultralytics_models import predict_bboxes_and_masks, predict_poses
 
 
 def eval(code: str, _locals: dict[str, Any]) -> tuple[str, dict[str, Any]]:
@@ -78,6 +92,8 @@ def main():
         log,
         predict_image_masks,
         predict_video_masks,
+        predict_bboxes_and_masks,
+        predict_poses,
     ]
 
     code_act = create_codeact(model, tools, eval, prompt=args.system_prompt)
