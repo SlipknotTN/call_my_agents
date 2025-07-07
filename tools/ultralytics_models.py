@@ -13,7 +13,7 @@ def predict_bboxes_and_masks(
 ) -> tuple[list[float], list[list[float]], list[list[float]]]:
     """
     Predict bboxes and masks from a YOLO model and return scores, bboxes and masks.
-    Compatuble with Pydantic
+    Compatible with Pydantic
 
     Args:
         model_path: Path to the YOLO model. Use segmentation model for box and mask prediction. Use pose model for pose prediction.
@@ -69,7 +69,7 @@ def predict_poses_from_model(
     dict[str, any],
 ]:
     """
-    Predict poses from a YOLO model and return YOLO results and dictionary
+    Predict human poses from a YOLO model and return YOLO results and dictionary
     with bboxes, scores, classes, keypoints and keypoints scores.
 
     Args:
