@@ -9,6 +9,7 @@ Steps:
 - [Optional] Install open-webui into the host machine to try the models with a ChatGPT browser like interface
   https://github.com/open-webui/open-webui?tab=readme-ov-file#installation-via-python-pip-
 """
+
 import argparse
 import json
 import logging
@@ -21,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 def do_parsing():
-    parser = argparse.ArgumentParser(description="Vanilla agent implementation without frameworks")
+    parser = argparse.ArgumentParser(
+        description="Vanilla agent implementation without frameworks"
+    )
     parser.add_argument(
         "--model_name",
         type=str,
@@ -29,9 +32,21 @@ def do_parsing():
         choices=["mistral", "llama3.2", "qwen2.5-coder:3b"],
         help="Ollama model name. Available list: https://ollama.com/library",
     )
-    parser.add_argument("--system_prompt", type=str, required=False, default="Write the code to answer the question using the tools",help="System prompt")
+    parser.add_argument(
+        "--system_prompt",
+        type=str,
+        required=False,
+        default="Write the code to answer the question using the tools",
+        help="System prompt",
+    )
     parser.add_argument("--question", type=str, required=True, help="Problem statement")
-    parser.add_argument("--tools_source_files", type=str, nargs="+", required=True, help="Source files to use as tools")
+    parser.add_argument(
+        "--tools_source_files",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Source files to use as tools",
+    )
     args = parser.parse_args()
     return args
 
@@ -41,11 +56,8 @@ def main():
     logger.info(args)
 
     question = args.question
-    system_prompt = {
-        "rules": args.system_prompt,
-        "tools_code": {}
-    }
-    
+    system_prompt = {"rules": args.system_prompt, "tools_code": {}}
+
     for tool_source_file in args.tools_source_files:
         with open(tool_source_file, "r") as f:
             tool_source_code = f.read()
@@ -55,10 +67,7 @@ def main():
         model=args.model_name,
         messages=[
             {"role": "system", "content": json.dumps(system_prompt)},
-            {
-                "role": "user",
-                "content": question
-            },
+            {"role": "user", "content": question},
         ],
     )
     logger.info(f"Answer: {response.message.content}")

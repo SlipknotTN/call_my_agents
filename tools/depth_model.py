@@ -12,9 +12,12 @@ import matplotlib
 import numpy as np
 import torch
 from PIL import Image
-from transformers import (AutoImageProcessor, AutoModelForDepthEstimation,
-                          DepthProForDepthEstimation,
-                          DepthProImageProcessorFast)
+from transformers import (
+    AutoImageProcessor,
+    AutoModelForDepthEstimation,
+    DepthProForDepthEstimation,
+    DepthProImageProcessorFast,
+)
 
 
 def colorize_depth_maps(
