@@ -1,0 +1,378 @@
+<|im_start|>system
+You are Qwen, created by Alibaba Cloud. You are a helpful assistant.
+
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools>:
+<tools>
+{
+    "type": "function",
+    "function": {
+        "name": "add",
+        "description": "Add two numbers together.",
+        "parameters": {
+            "type": "object",
+            "required": ["a", "b"],
+            "properties": {
+                "a": {
+                    "type": "number",
+                    "description": ""
+                },
+                "b": {
+                    "type": "number",
+                    "description": ""    
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "multiply",
+        "description": "Multiply two numbers together.",
+        "parameters": {
+            "type": "object",
+            "required": ["a","b"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                },
+                "b": {
+                    "type":"number",
+                    "description":""
+                }
+            }    
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "divide",
+        "description": "Divide two numbers.",
+        "parameters": {
+            "type":"object",
+            "required":["a","b"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                },
+                "b": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "subtract",
+        "description": "Subtract two numbers.",
+        "parameters": {
+            "type": "object",
+            "required": ["a","b"],
+            "properties": {
+                "a": {
+                    "type": "number",
+                    "description": ""
+                },
+                "b": {
+                    "type": "number",
+                    "description": ""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "sin",
+        "description": "Take the sine of a number.",
+        "parameters": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "cos",
+        "description": "Take the cosine of a number.",
+        "parameters": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+                "a": {
+                    "type": "number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "radians",
+        "description": "Convert degrees to radians.",
+        "parameters": {
+            "type":"object",
+            "required":["a"],
+            "properties": {
+                "a": {
+                    "type": "number",
+                    "description": ""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name":"exponentiation",
+        "description": "Raise one number to the power of another.",
+        "parameters": {
+            "type":"object",
+            "required":["a","b"],
+            "properties": { 
+                "a": {
+                    "type":"number",
+                    "description":""
+                },
+                "b": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "sqrt",
+        "description": "Take the square root of a number.",
+        "parameters": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+                "a": {
+                    "type": "number",
+                    "description": ""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "ceil",
+        "description": "Round a number up to the nearest integer.",
+        "parameters": {
+            "type":"object",
+            "required":["a"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "floor",
+        "description": "Round a number down to the nearest integer.",
+        "parameters": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name":"round",
+        "description": "Round a number to the nearest integer.\\nIf ndigits is provided, round to that many decimal places.",
+        "parameters": {
+            "type":"object",
+            "required":["number"],
+            "properties": {
+                "ndigits": {
+                    "type":"integer",
+                    "description":""
+                },
+                "number":{
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "log",
+        "description": "Take the natural logarithm of a number.",
+        "parameters": {
+            "type": "object",
+            "required": ["a"],
+            "properties": {
+                "a": {
+                    "type":"number",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name":"predict_image_masks",
+        "description":"Predict masks for an image using a SAM2 image model. Pydantic compatible, no need numpy arrays in the interface.\\n\\nArgs:\\n    image_path: str, path to the image to predict masks for\\n    hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small\\n    prompt_points: list of [x, y] coordinates, optional points to prompt the model\\n    prompt_labels: list of integers (0 or 1), optional labels to prompt the model\\n    prompt_box: list of [x1, y1, x2, y2], optional box to prompt the model\\n    multimask_output: bool, optional, whether to return multiple masks\\n\\nReturns:\\n    dict with masks, scores, and mask_logits encoded as lists",
+        "parameters":{
+            "type":"object",
+            "required":["image_path","hf_model_url"],
+            "properties": {
+                "hf_model_url": {
+                    "type":"string",
+                    "description":""
+                },
+                "image_path": {
+                    "type":"string",
+                    "description":""
+                },
+                "multimask_output": {
+                    "type":"boolean",
+                    "description":""
+                },
+                "prompt_box": {
+                    "type":"",
+                    "description":""
+                },
+                "prompt_labels": {
+                    "type":"",
+                    "description":""
+                },
+                "prompt_points": {
+                    "type":"",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name": "predict_video_masks",
+        "description":"Predict masks for a video using a SAM2 video model. Pydantic compatible, no need numpy arrays in the interface.\\n\\nArgs:\\n    video_path: str, path to the video to predict masks for\\n    hf_model_url: str, Hugging Face model url. E.g. facebook/sam2-hiera-large or facebook/sam2-hiera-small\\n    prompt_points: list of lists, each inner list contains [x, y] coordinates\\n    prompt_labels: list of integers (0 for negative, 1 for positive points)\\n    prompt_box: list of 4 values [x1, y1, x2, y2] defining a bounding box\\n    max_frames: int, optional, maximum number of frames to process\\n\\nReturns:\\n    video_frames_obj_masks: dict, keys are frame indices, values are dictionaries of object ids and their masks",
+        "parameters": {
+            "type":"object",
+            "required":["video_path","hf_model_url","prompt_points","prompt_labels"],
+            "properties": {
+                "hf_model_url": {
+                    "type":"string",
+                    "description":""
+                },
+                "max_frames": {
+                    "type":"",
+                    "description":""
+                },
+                "prompt_box": {
+                    "type":"",
+                    "description":""
+                },
+                "prompt_labels": {
+                    "type":"array",
+                    "description":""
+                },
+                "prompt_points": {
+                    "type":"array",
+                    "description":""
+                },
+                "video_path": {
+                    "type":"string",
+                    "description":""
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name":"predict_bboxes_and_masks",
+        "description":"Predict bboxes and masks from a YOLO model and return scores, bboxes and masks.\\nCompatible with Pydantic",
+        "parameters":{
+            "type":"object",
+            "required":["model_path","image_path"],
+            "properties":{
+                "image_path": {
+                    "type":"string",
+                    "description": "Path to the image to predict"
+                },
+                "model_path": {
+                    "type": "string",
+                    "description": "Path to the YOLO model. Use segmentation model for box and mask prediction. Use pose model for pose prediction. Segmentation model name format: yolo11\\u003csize\\u003e-seg.pt"
+                }
+            }
+        }
+    }
+}
+{
+    "type": "function",
+    "function": {
+        "name":"predict_poses",
+        "description":"Predict human poses from a YOLO model and return scores, bboxes and keypoints.\\nCompatible with Pydantic",
+        "parameters": {
+            "type":"object",
+            "required":["model_path","image_path"],
+            "properties": {
+                "image_path": {
+                    "type":"string",
+                    "description":"Path to the image to predict"
+                },
+                "model_path": {
+                    "type":"string",
+                    "description":"Path to the YOLO model. Use pose model for pose prediction. Pose model name format: yolo11\\u003csize\\u003e-pose.pt"
+                }
+            }
+        }
+    }
+}
+</tools>
+For each function call, return a json object with function name and arguments within <tool_call></tool_call> with NO other text. Do not include any backticks or ```json.
+<tool_call>
+{"name": <function-name>, "arguments": <args-json-object>}
+</tool_call><|im_end|>
+<|im_start|>user
+How many objects are in the image /home/michele/workspace/call_my_agents/data/fisheye_2.jpg?<|im_end|>
+<|im_start|>assistant
