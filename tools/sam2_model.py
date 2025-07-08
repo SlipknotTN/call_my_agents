@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from decord import VideoReader, cpu
-from langchain_core.tools import tool
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from sam2.sam2_video_predictor import SAM2VideoPredictor
 
@@ -266,8 +265,8 @@ def save_and_show_masks_video(
         vw.release()
     return output_video_path
 
-
-@tool
+# With @tool decorator the argument description are not correctly parsed by langchain?!
+# They end-up in the function description instead of the paramers description
 def predict_image_masks(
     image_path: str,
     hf_model_url: str,
@@ -353,7 +352,6 @@ def predict_image_masks_from_model(
         return masks, scores, masks_logits
 
 
-@tool
 def predict_video_masks(
     video_path: str,
     hf_model_url: str,
