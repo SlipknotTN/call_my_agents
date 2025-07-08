@@ -1,10 +1,15 @@
+"""
+Code with YOLO related functions. The code is compatible with Pydantic and duplicated from ultralytics_models.py to simplify the LLM understanding of the code,
+specifically the output format of the functions.
+
+import tools.ultralytics_tools to use the functions in this file
+"""
 from ultralytics import YOLO
-from tools.ultralytics_models import predict_bboxes_and_masks_from_model, predict_poses_from_model
 
 
 def predict_bboxes_and_masks(
     model_path: str, image_path: str
-) -> tuple[list[float], list[list[float]], list[list[float]]]:
+) -> dict[str, any]:
     """
     Predict bboxes and masks from a YOLO model and return scores, bboxes and masks.
     Compatible with Pydantic
@@ -14,15 +19,19 @@ def predict_bboxes_and_masks(
         image_path: Path to the image to predict
 
     Returns:
-        scores: List of scores
-        bboxes_xyxyn: List of bboxes
-        masks: List of masks
+        Dictionary with bboxes, scores, masks and classes
     """
     model = YOLO(model_path)
-    _, scores, bboxes_xyxyn, masks = predict_bboxes_and_masks_from_model(
-        model, image_path
-    )
-    return scores, bboxes_xyxyn, masks
+    results_ultra = model([image_path])
+    result_dict = {"bboxes": [], "scores": [], "masks": [], "classes": []}
+    assert len(results_ultra) == 1, "Only one image is supported"
+    result_ultra = results_ultra[0]
+    bboxes = result_ultra.boxes
+    result_dict["bboxes"] = bboxes.xyxyn.cpu().numpy().tolist()
+    result_dict["scores"] = [score.item() for score in bboxes.conf]
+    result_dict["masks"] = result_ultra.masks.data.cpu().numpy().tolist()
+    result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
+    return result_dict
 
 
 def predict_poses(model_path: str, image_path: str) -> dict[str, any]:
@@ -38,7 +47,21 @@ def predict_poses(model_path: str, image_path: str) -> dict[str, any]:
         Dictionary with bboxes, scores, classes, keypoints and keypoints scores
     """
     model = YOLO(model_path)
-    result_ultra, result_dict = predict_poses_from_model(
-        model=model, image_path=image_path
-    )
+    result_dict = {
+        "bboxes": [],
+        "scores": [],
+        "masks": [],
+        "classes": [],
+        "keypoints": [],
+        "keypoints_scores": [],
+    }
+    assert len(results_ultra) == 1, "Only one image is supported"
+    result_ultra = results_ultra[0]
+    bboxes = result_ultra.boxes
+    keypoints = result_ultra.keypoints
+    result_dict["bboxes"] = bboxes.xyxyn.cpu().numpy().tolist()
+    result_dict["scores"] = [score.item() for score in bboxes.conf]
+    result_dict["classes"] = [result_ultra.names[int(cls.item())] for cls in bboxes.cls]
+    result_dict["keypoints"] = keypoints.data.cpu().numpy().tolist()
+    result_dict["keypoints_scores"] = keypoints.conf.cpu().numpy().tolist()
     return result_dict

@@ -62,6 +62,7 @@ def main():
     for tool_source_file in args.tools_source_files:
         with open(tool_source_file, "r") as f:
             tool_source_code = f.read()
+        tools_code += f"## File {tool_source_file}\n\n"  # This helps the LLM to understand the necessary imports, the paths need to be relative to the current file
         tools_code += "```python\n"
         tools_code += tool_source_code
         tools_code += "```\n\n"
