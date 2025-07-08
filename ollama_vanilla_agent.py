@@ -36,7 +36,7 @@ def do_parsing():
         "--system_prompt",
         type=str,
         required=False,
-        default="Write the code to answer the question using the tools",
+        default=None,
         help="System prompt",
     )
     parser.add_argument("--question", type=str, required=True, help="Problem statement")
@@ -56,19 +56,25 @@ def main():
     logger.info(args)
 
     question = args.question
-    system_prompt = {"rules": args.system_prompt, "tools_code": {}}
+    system_prompt = args.system_prompt
 
+    tools_code = ""
     for tool_source_file in args.tools_source_files:
         with open(tool_source_file, "r") as f:
             tool_source_code = f.read()
-        system_prompt["tools_code"][tool_source_file] = tool_source_code
+        tools_code += "```python\n"
+        tools_code += tool_source_code
+        tools_code += "```\n\n"
+
+    messages = []
+    if system_prompt is not None and system_prompt != "":
+        messages.append({"role": "system", "content": system_prompt})
+    # It is more effective to pass the tools code as user prompt instead of system prompt (at least for qwen2.5-coder:3b)
+    messages.append({"role": "user", "content": tools_code + "\n\n" + question})
 
     response: ChatResponse = chat(
         model=args.model_name,
-        messages=[
-            {"role": "system", "content": json.dumps(system_prompt)},
-            {"role": "user", "content": question},
-        ],
+        messages=messages
     )
     logger.info(f"Answer: {response.message.content}")
 

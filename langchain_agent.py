@@ -20,7 +20,7 @@ from tools.math_ops import (
     subtract,
 )
 from tools.sam2_model import predict_image_masks, predict_video_masks
-from tools.ultralytics_models import predict_bboxes_and_masks, predict_poses
+from tools.ultralytics_tools import predict_bboxes_and_masks, predict_poses
 
 
 def do_parsing():
