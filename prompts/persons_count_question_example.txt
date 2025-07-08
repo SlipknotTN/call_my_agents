@@ -1,0 +1,1 @@
+How many persons are in the image /home/michele/workspace/call_my_agents/data/fisheye_2.jpg? Write the python code to answer this question using the functions provided
