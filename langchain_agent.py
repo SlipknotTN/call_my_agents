@@ -1,6 +1,7 @@
 import argparse
 
 from langchain_core.tools import tool
+from langchain_core.globals import set_debug
 from langchain_ollama import ChatOllama
 
 from tools.math_ops import (
@@ -27,12 +28,16 @@ def do_parsing():
     parser.add_argument("--text_prompt", type=str, required=True)
     parser.add_argument("--llm_model", type=str, required=True)
     parser.add_argument("--default_sam2_model", type=str, required=True)
+    parser.add_argument("--debug", action="store_true")
     return parser.parse_args()
 
 
 def main():
     args = do_parsing()
     print(args)
+    
+    if args.debug:
+        set_debug(True)
 
     llm = ChatOllama(model=args.llm_model)
     llm_with_tools = llm.bind_tools(
@@ -58,8 +63,8 @@ def main():
     )
     output = llm_with_tools.invoke(args.text_prompt)
 
-    print(output.tool_calls)
-    print(output)
+    print(f"Tool calls: {output.tool_calls}")
+    print(f"Full output: {output}")
 
 
 if __name__ == "__main__":
