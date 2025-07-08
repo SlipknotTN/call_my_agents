@@ -12,7 +12,6 @@ def predict_bboxes_and_masks(
 ) -> dict[str, any]:
     """
     Predict bboxes and masks from a YOLO model and return scores, bboxes and masks.
-    Compatible with Pydantic
 
     Args:
         model_path: Path to the YOLO model. Use segmentation model for box and mask prediction. Use pose model for pose prediction. Segmentation model name format: yolo11<size>-seg.pt, e.g. yolo11s-seg.pt
@@ -37,7 +36,8 @@ def predict_bboxes_and_masks(
 def predict_poses(model_path: str, image_path: str) -> dict[str, any]:
     """
     Predict human poses (persons) from a YOLO model and return scores, bboxes and keypoints.
-    Compatible with Pydantic
+    bboxes, scores, masks and classes are at the person level. The classes are always "person".
+    keypoints and keypoints_scores are at the single keypoint level.
 
     Args:
         model_path: Path to the YOLO model. Use pose model for pose prediction. Pose model name format: yolo11<size>-pose.pt, e.g. yolo11s-pose.pt
@@ -47,6 +47,7 @@ def predict_poses(model_path: str, image_path: str) -> dict[str, any]:
         Dictionary with bboxes, scores, classes, keypoints and keypoints scores
     """
     model = YOLO(model_path)
+    results_ultra = model([image_path])
     result_dict = {
         "bboxes": [],
         "scores": [],
