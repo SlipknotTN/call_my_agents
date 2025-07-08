@@ -10,7 +10,7 @@ def predict_bboxes_and_masks(
     Compatible with Pydantic
 
     Args:
-        model_path: Path to the YOLO model. Use segmentation model for box and mask prediction. Use pose model for pose prediction. Segmentation model name format: yolo11<size>-seg.pt
+        model_path: Path to the YOLO model. Use segmentation model for box and mask prediction. Use pose model for pose prediction. Segmentation model name format: yolo11<size>-seg.pt, e.g. yolo11s-seg.pt
         image_path: Path to the image to predict
 
     Returns:
@@ -31,7 +31,7 @@ def predict_poses(model_path: str, image_path: str) -> dict[str, any]:
     Compatible with Pydantic
 
     Args:
-        model_path: Path to the YOLO model. Use pose model for pose prediction. Pose model name format: yolo11<size>-pose.pt
+        model_path: Path to the YOLO model. Use pose model for pose prediction. Pose model name format: yolo11<size>-pose.pt, e.g. yolo11s-pose.pt
         image_path: Path to the image to predict
 
     Returns:
