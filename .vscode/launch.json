@@ -172,16 +172,46 @@
             ]
         },
         {
-            "name": "Langgraph Codeact Agent",
+            "name": "Langchain Agent count poses",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "langchain_agent.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--text_prompt",
+                "How many persons are in the image /home/michele/DNN/call_my_agents/data/people_walking.png? Write the python code to answer this question using the functions provided",
+                "--llm_model",
+                "qwen2.5-coder",
+                "--default_sam2_model",
+                "facebook/sam2-hiera-large"
+            ]
+        },
+        {
+            "name": "Vanilla Agent code generation count poses",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "ollama_vanilla_agent.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--question",
+                "How many persons are in the image /home/michele/DNN/call_my_agents/data/people_walking.png? Write the python code to answer this question using the functions provided",
+                "--tools_source_files",
+                "tools/ultralytics_models.py",
+                "--llm_model",
+                "qwen2.5-coder:3b",
+            ]
+        },
+        {
+            "name": "Langgraph Codeact Agent count poses",
             "type": "debugpy",
             "request": "launch",
             "program": "langgraph_codeact_agent.py",
             "console": "integratedTerminal",
             "args": [
                 "--text_prompt",
-                "A batter hits a baseball at 45.847 m/s at an angle of 23.474° above the horizontal. The outfielder, who starts facing the batter, picks up the baseball as it lands, then throws it back towards the batter at 24.12 m/s at an angle of 39.12 degrees. How far is the baseball from where the batter originally hit it? Assume zero air resistance.",
+                "How many persons are in the image /home/michele/DNN/call_my_agents/data/people_walking.png? Write the python code to answer this question using the functions provided",
                 "--llm_model",
-                "llama3.2",
+                "qwen2.5-coder:3b",
                 "--default_sam2_model",
                 "facebook/sam2-hiera-large"
             ]
