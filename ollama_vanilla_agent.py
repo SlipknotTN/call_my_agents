@@ -26,7 +26,7 @@ def do_parsing():
         description="Vanilla agent implementation without frameworks"
     )
     parser.add_argument(
-        "--model_name",
+        "--llm_model",
         type=str,
         default="mistral",
         choices=["mistral", "llama3.2", "qwen2.5-coder:3b"],
@@ -74,7 +74,7 @@ def main():
     messages.append({"role": "user", "content": tools_code + "\n\n" + question})
 
     response: ChatResponse = chat(
-        model=args.model_name,
+        model=args.llm_model,
         messages=messages
     )
     logger.info(f"Answer: {response.message.content}")
